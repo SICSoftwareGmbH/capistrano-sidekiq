@@ -1,0 +1,50 @@
+namespace :load do
+  task :defaults do
+    # Bin maps
+    set :rbenv_map_bins, Array(fetch(:rbenv_map_bins)).concat(%w( sidekiq sidekiqctl ))
+    set :rvm_map_bins,   Array(fetch(:rvm_map_bins)).concat(%w( sidekiq sidekiqctl ))
+    set :bundle_bins,    Array(fetch(:bundle_bins)).concat(%w( sidekiq sidekiqctl ))
+
+    # Environment
+    set :sidekiq_roles,   :app
+    set :sidekiq_env,     -> { fetch(:rack_env, fetch(:rails_env, fetch(:stage))) }
+    set :sidekiq_user,    -> { fetch(:app_user, nil) }
+    set :sidekiq_log,     -> { File.join(shared_path, 'log', 'sidekiq.log') }
+    set :sidekiq_pid,     -> { File.join(shared_path, 'tmp', 'pids', 'sidekiq.pid') }
+    set :sidekiq_timeout, -> { 10 }
+  end
+end
+
+namespace :sidekiq do
+  desc 'Quiet sidekiq (stop processing new tasks)'
+  task :quiet do
+    run_sidekiq_cmd do
+      quiet_sidekiq
+    end
+  end
+
+  desc 'Start sidekiq'
+  task :start do
+    run_sidekiq_cmd do
+      start_sidekiq
+    end
+  end
+
+  desc 'Stop sidekiq'
+  task :stop do
+    run_sidekiq_cmd do
+      stop_sidekiq
+    end
+  end
+
+  desc 'Restart sidekiq'
+  task :restart do
+    run_sidekiq_cmd do
+      restart_sidekiq
+    end
+  end
+
+  after 'deploy:starting', :quiet
+  after 'deploy:updated', :stop
+  after 'deploy:published', :restart
+end
